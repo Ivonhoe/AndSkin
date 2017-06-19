@@ -1,0 +1,6 @@
+<resources>
+    <declare-styleable name="styleTest">
+        <attr name="style_text_size" format="dimension" />
+    </declare-styleable>
+
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="skin_color_tab_select">#231815</color>
+    <color name="skin_color_tab_unselect">#666666</color>
+    <color name="skin_color_select_bg">#01A3FF</color>
+</resources>

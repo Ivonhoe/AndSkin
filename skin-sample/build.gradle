@@ -1,0 +1,52 @@
+apply plugin: 'com.android.application'
+apply plugin: 'ivonhoe.gradle.skinAapt'
+andSkin {
+    skinResLibrary = "skin-res"
+    skinSymbols = "${rootDir}/skin-res/test-R.txt"
+}
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+    defaultConfig {
+        applicationId "ivonhoe.android.themedemo"
+        minSdkVersion 15
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        debug {
+            // No debug config
+            storeFile file("${rootDir}/keystores/xqsg_debug.jks")
+        }
+
+        release {
+            storeFile file("${rootDir}/keystores/pick.jks")
+            keyAlias "pickapp"
+            storePassword "pick2017go"
+            keyPassword "pick2017go"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile project(':skin-lib')
+    compile project(':skin-res')
+}
