@@ -102,6 +102,7 @@ public class AaptPlugin implements Plugin<Project> {
             aapt = (ProcessAndroidResources) this.project.tasks["process${variantName}Resources"]
             apFile = aapt.packageOutputFile
 
+            System.out.println("---variant name:" + variantName + ",aapt.textSysmbolOutputDir:" + aapt.textSymbolOutputDir)
             File symbolDir = aapt.textSymbolOutputDir
             File sourceDir = aapt.sourceOutputDir
 
@@ -193,13 +194,13 @@ public class AaptPlugin implements Plugin<Project> {
                 aapt.filterResources(andSkin.retainedTypes, filteredResources)
                 Log.success "[${project.name}] split library res files..."
 
-                andSkin.idStrMaps.each {
-                    //System.out.println("idMaps---it:" + it)
-                }
-                System.out.println("andSkin.retainedTypes size:" + andSkin.retainedTypes.size())
-                andSkin.retainedTypes.each {
-                    System.out.println("retained type:" + it)
-                }
+//                andSkin.idStrMaps.each {
+//                    System.out.println("idMaps---it:" + it)
+//                }
+//                System.out.println("andSkin.retainedTypes size:" + andSkin.retainedTypes.size())
+//                andSkin.retainedTypes.each {
+//                    System.out.println("retained type:" + it)
+//                }
                 aapt.filterPackage(andSkin.retainedTypes, andSkin.packageId, andSkin.idMaps, libRefTable,
                         andSkin.retainedStyleables, updatedResources)
 
@@ -207,7 +208,7 @@ public class AaptPlugin implements Plugin<Project> {
 
                 String pkg = andSkin.packageName
                 // Overwrite the aapt-generated R.java with full edition
-                aapt.generateRJava(andSkin.rJavaFile, pkg, andSkin.retainedTypes, andSkin.retainedStyleables)
+                aapt.generateRJava(andSkin.rJavaFile, pkg, andSkin.allTypes, andSkin.allStyleables)
                 // Also generate a split edition for later re-compiling
                 aapt.generateRJava(andSkin.splitRJavaFile, pkg,
                         andSkin.retainedTypes, andSkin.retainedStyleables)
@@ -215,17 +216,23 @@ public class AaptPlugin implements Plugin<Project> {
                 // Overwrite the retained vendor R.java
                 def retainedRFiles = [andSkin.rJavaFile]
                 andSkin.vendorTypes.each { name, types ->
+                    System.out.println("name:" + name)
+                    andSkin.buildCaches.each {
+                        //System.out.println("------build cache:" + it)
+                    }
                     File aarOutput = andSkin.buildCaches.get(name)
-                    // TODO: read the aar package name once and store
-                    File manifestFile = new File(aarOutput, 'AndroidManifest.xml')
-                    def manifest = new XmlParser().parse(manifestFile)
-                    String aarPkg = manifest.@package
-                    String pkgPath = aarPkg.replaceAll('\\.', '/')
-                    File r = new File(sourceOutputDir, "$pkgPath/R.java")
-                    retainedRFiles.add(r)
+                    if (aarOutput != null) {
+                        // TODO: read the aar package name once and store
+                        File manifestFile = new File(aarOutput, 'AndroidManifest.xml')
+                        def manifest = new XmlParser().parse(manifestFile)
+                        String aarPkg = manifest.@package
+                        String pkgPath = aarPkg.replaceAll('\\.', '/')
+                        File r = new File(sourceOutputDir, "$pkgPath/R.java")
+                        retainedRFiles.add(r)
 
-                    def styleables = andSkin.vendorStyleables[name]
-                    aapt.generateRJava(r, aarPkg, types, styleables)
+                        def styleables = andSkin.vendorStyleables[name]
+                        aapt.generateRJava(r, aarPkg, types, styleables)
+                    }
                 }
 
                 // Remove unused R.java to fix the reference of shared library resource, issue #63
@@ -267,12 +274,6 @@ public class AaptPlugin implements Plugin<Project> {
             filteredResources.addAll(updatedResources)
             ZipUtils.with(apFile).deleteAll(filteredResources)
 
-            updatedResources.each {
-                System.out.println("------update resources:" + it)
-            }
-            unzipApDir.list().each {
-                System.out.println("unzipApDir list:" + it)
-            }
             // Re-add updated entries.
             // $ aapt add resources.ap_ file1 file2 ...
             project.exec {
@@ -311,22 +312,29 @@ public class AaptPlugin implements Plugin<Project> {
 
         andSkin.retainedAars = mUserLibAars
 
-        def skinIntermediatesDir = project.buildDir.getAbsolutePath() + File.separator +
+        def vendorTypes = new HashMap<String, List<Map>>()
+        def vendorStyleables = [:]
+        def vendorEntries = new HashMap<String, HashSet<SymbolParser.Entry>>()
+
+        def intermediatesOutputDir = project.buildDir.getAbsolutePath() + File.separator +
                 "intermediates" + File.separator + "exploded-aar" + File.separator
+        //获取依赖的aar，及他的资源名称索引
         mUserLibAars.each {
-            if (it.name == "skin-res") {
-                def group = it.get("group");
-                def name = it.get("name");
-                def version = it.get("version")
-                skinIntermediatesDir += group + File.separator + name +
-                        File.separator + version + File.separator
-            }
+            def group = it.get("group");
+            def name = it.get("name");
+            def version = it.get("version")
+            def key = group + File.separator + name +
+                    File.separator + version
+            def path = intermediatesOutputDir + key + File.separator + "R.txt"
+
+            def entries = SymbolParser.getResourceEntries(new File(path))
+            vendorEntries.put(key, entries)
         }
 
-        File skinRFile = new File(skinIntermediatesDir + "R.txt")
-        def skinEntries = SymbolParser.getResourceEntries(skinRFile)
-
-        File sliceSkinRFile = new File("/Users/Ivonhoe/Workspace/AndSkin/skin-res/test-R.txt")
+        File sliceSkinRFile = new File(andSkin.skinSymbols)
+        if (!sliceSkinRFile.exists()) {
+            throw new RuntimeException(sliceSkinRFile.getAbsolutePath() + ",需要指定正确的R.txt!")
+        }
 
         def sliceEntries = SymbolParser.getResourceEntries(sliceSkinRFile)
         def publicEntries = SymbolParser.getResourceEntries(andSkin.publicSymbolFile)
@@ -345,14 +353,14 @@ public class AaptPlugin implements Plugin<Project> {
         def allTypes = []
         def allStyleables = []
         def addedTypes = [:]
-        def vendorTypes = new HashMap<String, List<Map>>()
-        def vendorStyleables = [:]
 
-        sliceEntries.each {
-            System.out.println("需要剥离的类型:" + ",it:" + it)
-        }
+//        sliceEntries.each {
+//            System.out.println("需要剥离的类型:" + ",it:" + it)
+//        }
 
-        // 将所有id分为两部分，包含在host里的res和不包换在host里的res
+        /**
+         * 将所有id分为两部分，包含在host里的res和不包换在host里的res
+         */
         bundleEntries.each { k, Map be ->
             be._typeId = be.typeId
             be._entryId = be.entryId
@@ -371,14 +379,22 @@ public class AaptPlugin implements Plugin<Project> {
             }
         }
 
-        // 过滤出的资源
+        retainedStyleables.each {
+            System.out.println("---------retained style:"+it)
+        }
+
+        /**
+         * 过滤出需要从全部资源列表中分离的资源
+         */
         excludeEntries.each {
             staticIdMaps.put(it.id, it._v)
             staticIdStrMaps.put(it.idStr, it._vs)
         }
 
-        // Prepare public types
-        // 将包含在host里的资源，按照type分割，并分配新的id
+        /**
+         * Prepare public types
+         * 将包含在host里的资源，按照type分割，并分配新的id
+         */
         def publicTypes = [:]
         retainedEntries.each { e ->
             def type = publicTypes[e.type]
@@ -386,6 +402,26 @@ public class AaptPlugin implements Plugin<Project> {
                 publicTypes[e.type].add(e)
             } else {
                 publicTypes[e.type] = [e]
+            }
+        }
+
+        def vendorTypesMap = [:]
+        // key:aar名称，value:资源列表
+        vendorEntries.each { key, vendorEntry ->
+            //type:entry
+            def map = vendorTypesMap.get(key)
+            if (map == null) {
+                map = [:]
+                vendorTypesMap.put(key, map)
+            }
+
+            // vk:type/name vEntry:资源详情
+            vendorEntry.each { vk, Map vEntry ->
+                if (map.get(vEntry.type) == null) {
+                    map.put(vEntry.type, [:])
+                }
+
+                map.get(vEntry.type).put(vEntry.key, vEntry)
             }
         }
 
@@ -415,54 +451,81 @@ public class AaptPlugin implements Plugin<Project> {
                     staticIdMaps.put(i.id, newResId)
                     staticIdStrMaps.put(i.idStr, newResIdStr)
 
+                    // Prepare styleable id maps for resolving R.java
+                    if (retainedStyleables.size() > 0 && i.typeId == 1) {
+                        retainedStyleables.findAll { it.idStrs != null }.each {
+                            // Replace `e.idStr' with `newResIdStr'
+                            def index = it.idStrs.indexOf(i.idStr)
+                            if (index >= 0) {
+                                System.out.println("----it:"+it+",+++++i:"+i)
+                                it.idStrs[index] = newResIdStr
+                                it.mapped = true
+                            }
+                        }
+                    }
+
                     def entry = [name: i.key, id: i.entryId, _id: i._entryId, v: i.id, _v: newResId,
                                  vs  : i.idStr, _vs: newResIdStr]
                     currType.entries.add(entry)
+
+                    vendorTypesMap.each { aar, Map typeMap ->
+                        List<Map> re = vendorTypes.get(aar)
+                        if (re == null) {
+                            re = new ArrayList<Map>()
+                            vendorTypes.put(aar, re)
+                        }
+
+                        typeMap.each { typeName, Map entries ->
+                            if (typeName == currType.name && entries.get(entry.name) != null) {
+                                boolean found = false
+                                re.each { it ->
+                                    if (it.name == typeName) {
+                                        found = true
+                                        it.entries.add(entry)
+                                    }
+                                }
+                                if (!found) {
+                                    def vCurrType = [type: currType.type, name: currType.name,
+                                                     id  : currType.id, _id: currType._id, entries: []]
+                                    vCurrType.entries.add(entry)
+                                    re.add(vCurrType)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
+        // Update the id array for styleables
+        retainedStyleables.findAll { it.mapped != null }.each {
+            it.idStr = "{ ${it.idStrs.join(', ')} }"
+            it.idStrs = null
+        }
+
+        //TODO 需要对typeId和resource id做一个重新排序
         retainedTypes.sort { a, b ->
             return a._id.compareTo(b._id)
         }
 
-        publicTypes.each { key, value ->
-//            System.out.println("--key:" + key + ",value:" + value)
+        retainedTypes.each {
+            def currType = [type: it.type, name: it.name, id: it.id, _id: it._id, entries: it.entries]
+
+            excludeEntries.each { ex ->
+                if (ex.type == currType.name) {
+                    def entry = [name: ex.key, id: ex.entryId, _id: ex._entryId, v: ex.id, _v: ex._v,
+                                 vs  : ex.idStr, _vs: ex._vs]
+                    it.entries.add(entry)
+                }
+            }
+
+//            currType.entries.each {a, b ->
+//                return a._id.compareTo(b._id)
+//            }
+            allTypes.add(currType)
         }
 
-//
-//        def pid = (andSkin.packageId << 24)
-//        def currType
-//        retainedEntries.each { e ->
-//            e._entryId = e.entryId
-//            e._typeId = e.typeId
-//            // Prepare entry id maps for resolving resources.arsc and binary xml files
-//            if (currType == null || currType.name != e.type) {
-//                // New type
-//                currType = [type: e.vtype, name: e.type, id: e.typeId, _id: e._typeId, entries: []]
-//                retainedTypes.add(currType)
-//            }
-//            def newResId = pid | (e._typeId << 16) | e._entryId
-//            def newResIdStr = "0x${Integer.toHexString(newResId)}"
-//            staticIdMaps.put(e.id, newResId)
-//            staticIdStrMaps.put(e.idStr, newResIdStr)
-//
-//            // Prepare styleable id maps for resolving R.java
-//            if (retainedStyleables.size() > 0 && e.typeId == 1) {
-//                retainedStyleables.findAll { it.idStrs != null }.each {
-//                    // Replace `e.idStr' with `newResIdStr'
-//                    def index = it.idStrs.indexOf(e.idStr)
-//                    if (index >= 0) {
-//                        it.idStrs[index] = newResIdStr
-//                        it.mapped = true
-//                    }
-//                }
-//            }
-//
-//            def entry = [name: e.key, id: e.entryId, _id: e._entryId, v: e.id, _v: newResId,
-//                         vs  : e.idStr, _vs: newResIdStr]
-//            currType.entries.add(entry)
-//        }
+        allStyleables.addAll(retainedStyleables)
 
         andSkin.idMaps = staticIdMaps
         andSkin.idStrMaps = staticIdStrMaps
@@ -559,7 +622,6 @@ public class AaptPlugin implements Plugin<Project> {
                                                Set<SymbolParser.Entry> outTypeEntries,
                                                Set<String> outStyleableKeys) {
         def merger = new XmlParser().parse(andSkin.mergerXml)
-        System.out.println("------merge xml:" + andSkin.mergerXml)
         def filter = config == null ? {
             it.@config == 'main' || it.@config == 'release'
         } : {

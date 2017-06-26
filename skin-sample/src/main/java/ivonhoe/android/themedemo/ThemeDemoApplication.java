@@ -1,6 +1,8 @@
 package ivonhoe.android.themedemo;
 
 import android.app.Application;
+import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 
 import ivonhoe.android.skin.core.Skin;
@@ -20,5 +22,8 @@ public class ThemeDemoApplication extends Application {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        Resources resources = getResources();
+        Log.d("simply", "---app resources:" + resources);
     }
 }

@@ -3,15 +3,11 @@ package ivonhoe.gradle.skin
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.BaseVariant
 import net.wequick.gradle.aapt.SymbolParser
-import net.wequick.gradle.util.Log
-import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.ResolvedDependency
 
 public class ResPlugin extends AaptPlugin {//implements Plugin<Project> {
 
     private File mBakBuildFile
-//    private Project project
 
     protected BaseExtension getAndroid() {
         return project.android
@@ -26,7 +22,6 @@ public class ResPlugin extends AaptPlugin {//implements Plugin<Project> {
         super.apply(project)
 
         andSkin.packageId = 0x79
-        System.out.println("-----andSkin:" + andSkin.packageId)
     }
 
     protected void configureVariant(BaseVariant variant) {

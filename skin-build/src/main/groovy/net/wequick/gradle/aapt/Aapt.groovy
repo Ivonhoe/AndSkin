@@ -186,7 +186,6 @@ public class Aapt {
         def isWindows = (File.separator != ENTRY_SEPARATOR)
         dir.eachFileRecurse(FileType.FILES) { file ->
             if (file.name.endsWith('.xml')) {
-                System.out.println("xml:"+file.absolutePath)
                 def editor = new AXmlEditor(file)
                 editor.setPackageId(pp, idMaps)
                 if (outUpdatedResources != null) {

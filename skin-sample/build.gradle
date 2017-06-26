@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
-apply plugin: 'ivonhoe.gradle.skinAapt'
+
+apply plugin: 'ivonhoe.gradle.skinApp'
 andSkin {
     skinResLibrary = "skin-res"
     skinSymbols = "${rootDir}/skin-res/test-R.txt"
@@ -49,4 +50,7 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile project(':skin-lib')
     compile project(':skin-res')
+
+    compile 'com.android.support:appcompat-v7:22.1.1'
+    compile 'com.android.support:multidex:1.0.1'
 }

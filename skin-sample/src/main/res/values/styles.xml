@@ -1,6 +1,13 @@
 <resources>
     <declare-styleable name="styleTest">
-        <attr name="style_text_size" format="dimension" />
+        <attr name="style_text_size" format="dimension"/>
     </declare-styleable>
 
+    <declare-styleable name="BubbleTabView">
+        <attr name="bt_index" format="integer"/>
+        <attr name="bt_selectedIcon" format="reference"/>
+        <attr name="bt_unSelectedIcon" format="reference"/>
+        <attr name="bt_selectedColor" format="color"/>
+        <attr name="bt_unSelectedColor" format="color"/>
+    </declare-styleable>
 </resources>

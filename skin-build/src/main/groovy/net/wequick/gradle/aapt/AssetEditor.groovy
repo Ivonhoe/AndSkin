@@ -86,7 +86,7 @@ public class AssetEditor extends CppHexEditor {
             id = ((pp << 24) | (id & 0x00ffffff)) // replace pp
         }
 
-        System.out.println("rewrite package id:" + oldId + ",to:" + id);
+//        System.out.println("rewrite package id:" + oldId + ",to:" + id);
         seek(pos)
         writeInt(id)
     }

@@ -6,7 +6,12 @@ if (BUILD_RES == 'true') {
     version '0.0.1-SNAPSHOT'
 }
 
+//  gradle clean assembleRelease -PBUILD_RES=true
 apply plugin: 'ivonhoe.gradle.skinRes'
+andSkin {
+    skinResLibrary = "skin-res"
+    skinSymbols = "${rootDir}/skin-res/test-R.txt"
+}
 
 android {
     compileSdkVersion 25
@@ -30,7 +35,6 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 
-    compile project(':skin-lib')
+    compile 'com.android.support:support-v4:22+'
 }
-
 
